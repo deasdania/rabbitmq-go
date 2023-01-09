@@ -45,9 +45,37 @@ func main() {
 	forever := make(chan bool)
 	go func() {
 		for d := range msg {
-			log.Printf("received as message: %s", d.Body)
+			log.Printf("received as message: %s\nfrom queue: %s", string(d.Body), q.Name)
 		}
 	}()
+
+	qP, err := ch.QueueDeclare(
+		"livetest-product1", //name
+		false,               // durable
+		false,               //delete when unused
+		false,               // exclusive
+		false,               // no-wait
+		nil,                 // arguments
+	)
+	errorWrapper(err, "Failed to declare a queue")
+
+	msgP, err := ch.Consume(
+		qP.Name, // queue
+		"",      // consumer
+		true,    // auto-ack
+		false,   // exclusive
+		false,   // no-local
+		false,   // no-wait
+		nil,     // args
+	)
+	errorWrapper(err, "Failed to register a consumer")
+
+	go func() {
+		for d := range msgP {
+			log.Printf("received as message: %s\nfrom queue: %s", string(d.Body), qP.Name)
+		}
+	}()
+
 	log.Printf("waiting for message. to exit press CTRL+C")
 	<-forever
 }
