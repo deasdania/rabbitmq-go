@@ -1,0 +1,14 @@
+
+# rabbitmq-go
+
+i follow two tutorial 
+
+https://halovina.com/publish-pesan-ke-rabbitmq-menggunakan-bahasa-golang/
+https://halovina.com/setup-rabbitmq-server-menggunakan-docker-compose/
+
+## how to run
+
+- run the docker compose inside rabbitlocal folder
+- run the main.go in the consumer (terminal/shell 1)
+- run the main.go in the publisher (terminal/shell 2)
+
