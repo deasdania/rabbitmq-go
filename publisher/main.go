@@ -21,38 +21,31 @@ func main() {
 	errorWrapper(err, "Failed to connect rabbitmq")
 	defer conn.Close()
 
-	ch, err := conn.Channel()
+	chP, err := conn.Channel()
 	errorWrapper(err, "Failed to open a channel")
-	defer ch.Close()
+	defer chP.Close()
 
-	q, err := ch.QueueDeclare(
-		"golang-queue", //name
-		false,          // durable
-		false,          //delete when unused
-		false,          // exclusive
-		false,          // no-wait
-		nil,            // arguments
+	qP, err := chP.QueueDeclare(
+		"livetest-product1", //name
+		false,               // durable
+		false,               //delete when unused
+		false,               // exclusive
+		false,               // no-wait
+		nil,                 // arguments
 	)
 	errorWrapper(err, "Failed to declare a queue")
 
-	for _, msg := range msgQueue {
-		publishMsg(ch, q, &msg)
-		msgFormated := model.BodyPublishTest{
-			ProductName:    "livetest-product1",
-			HandlerNameKey: "LOC_VER_V3_BS_Get_Score_V3",
-			MsgQue:         msg,
-		}
-		q.Name = msgFormated.ProductName
-		publishMsgJson(ch, q, &msgFormated)
+	for _, msg := range bodyPublish {
+		publishMsgJson(chP, qP, &msg)
 	}
 }
 
 func publishMsg(ch *amqp.Channel, q amqp.Queue, msg *model.LivetestBacktestMessageQueue) {
 	err := ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immadiate
+		"golang-queue", // exchange
+		"theroute",     // routing key
+		false,          // mandatory
+		false,          // immadiate
 		amqp.Publishing{
 			ContentType: "text/plain",
 			Body:        []byte(msg.ID),
@@ -70,10 +63,10 @@ func publishMsgJson(ch *amqp.Channel, q amqp.Queue, msg *model.BodyPublishTest) 
 		return
 	}
 	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immadiate
+		"livetest-product1", // exchange
+		"theroute2",         // routing key
+		false,               // mandatory
+		false,               // immadiate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        []byte(body),
@@ -94,5 +87,24 @@ var msgQueue = []model.LivetestBacktestMessageQueue{
 	{
 		ID:               "abcd-dcba-2",
 		BatchUploadCSVID: "1234-4321",
+	},
+}
+
+var bodyPublish = []model.BodyPublishTest{
+	{
+		ProductName:    "livetest-product1",
+		HandlerNameKey: "LOC_VER_V3_BS_Get_Score_V3",
+		MsgQue: model.LivetestBacktestMessageQueue{
+			ID:               "abcd-dcba-1",
+			BatchUploadCSVID: "1234-4321",
+		},
+	},
+	{
+		ProductName:    "livetest-product1",
+		HandlerNameKey: "LOC_VER_V3_BS_Get_Score_V3",
+		MsgQue: model.LivetestBacktestMessageQueue{
+			ID:               "abcd-dcba-2",
+			BatchUploadCSVID: "1234-4321",
+		},
 	},
 }

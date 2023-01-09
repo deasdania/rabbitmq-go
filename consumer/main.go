@@ -17,39 +17,27 @@ func main() {
 	errorWrapper(err, "Failed to connect rabbitmq")
 	defer conn.Close()
 
-	ch, err := conn.Channel()
-	errorWrapper(err, "Failed to open a channel")
-	defer ch.Close()
-
-	q, err := ch.QueueDeclare(
-		"golang-queue", //name
-		false,          // durable
-		false,          //delete when unused
-		false,          // exclusive
-		false,          // no-wait
-		nil,            // arguments
-	)
-	errorWrapper(err, "Failed to declare a queue")
-
-	msg, err := ch.Consume(
-		q.Name, // queue
-		"",     // consumer
-		true,   // auto-ack
-		false,  // exclusive
-		false,  // no-local
-		false,  // no-wait
-		nil,    // args
-	)
-	errorWrapper(err, "Failed to register a consumer")
+	log.Printf("waiting for message. to exit press CTRL+C")
 
 	forever := make(chan bool)
-	go func() {
-		for d := range msg {
-			log.Printf("received as message: %s\nfrom queue: %s", string(d.Body), q.Name)
-		}
-	}()
-
-	qP, err := ch.QueueDeclare(
+	// EXPERIMENT
+	chP, err := conn.Channel()
+	errorWrapper(err, "Failed to open a channel")
+	defer chP.Close()
+	err = chP.ExchangeDeclare(
+		"livetest-product1",
+		"direct",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	qP, err := chP.QueueDeclare(
 		"livetest-product1", //name
 		false,               // durable
 		false,               //delete when unused
@@ -58,8 +46,18 @@ func main() {
 		nil,                 // arguments
 	)
 	errorWrapper(err, "Failed to declare a queue")
-
-	msgP, err := ch.Consume(
+	err = chP.QueueBind(
+		qP.Name,
+		"theroute2",
+		"livetest-product1",
+		false,
+		nil,
+	)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	msgP, err := chP.Consume(
 		qP.Name, // queue
 		"",      // consumer
 		true,    // auto-ack
@@ -70,12 +68,11 @@ func main() {
 	)
 	errorWrapper(err, "Failed to register a consumer")
 
-	go func() {
-		for d := range msgP {
+	for d := range msgP {
+		go func() {
 			log.Printf("received as message: %s\nfrom queue: %s", string(d.Body), qP.Name)
-		}
-	}()
+		}()
+	}
 
-	log.Printf("waiting for message. to exit press CTRL+C")
 	<-forever
 }
